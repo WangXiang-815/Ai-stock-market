@@ -21,7 +21,7 @@
       <div class="chat-body">
         <div class="message assistant">
           <div class="bubble">
-            Hello! I'm your AI assistant. Enter a stock ticker below and I will compare two LLM explanations for the same model signal.
+            Hello! Enter a stock ticker below and I will compare two LLM explanations for the same model signal.
           </div>
         </div>
 
@@ -36,6 +36,8 @@
                 <h3>Model Signal</h3>
                 <p><strong>Ticker:</strong> {{ msg.data.model_signal.ticker }}</p>
                 <p><strong>Action:</strong> {{ msg.data.model_signal.action }}</p>
+                <p><strong>Date:</strong> {{ msg.data.model_signal.prediction_date }}</p>
+                <p><strong>Horizon:</strong> {{ msg.data.model_signal.horizon_days }} days</p>
                 <p>
                   <strong>Probabilities:</strong>
                   SELL {{ toPercent(msg.data.model_signal.probabilities.SELL) }},
@@ -45,15 +47,83 @@
               </div>
 
               <div class="result-block">
-                <h3>{{ msg.data.deepseek_explanation.model_name }}</h3>
+                <h3>{{ msg.data.deepseek_explanation.model_name || "DeepSeek" }}</h3>
                 <p><strong>Suggestion:</strong> {{ msg.data.deepseek_explanation.suggestion }}</p>
                 <p><strong>Summary:</strong> {{ msg.data.deepseek_explanation.summary }}</p>
+
+                <div v-if="msg.data.deepseek_explanation.reasoning">
+                  <strong>Reasoning:</strong>
+                  <ul v-if="Array.isArray(msg.data.deepseek_explanation.reasoning)">
+                    <li
+                      v-for="item in msg.data.deepseek_explanation.reasoning"
+                      :key="item"
+                    >
+                      {{ item }}
+                    </li>
+                  </ul>
+                  <p v-else>{{ msg.data.deepseek_explanation.reasoning }}</p>
+                </div>
+
+                <div v-if="msg.data.deepseek_explanation.risk_warning">
+                  <strong>Risk Warning:</strong>
+                  <ul v-if="Array.isArray(msg.data.deepseek_explanation.risk_warning)">
+                    <li
+                      v-for="item in msg.data.deepseek_explanation.risk_warning"
+                      :key="item"
+                    >
+                      {{ item }}
+                    </li>
+                  </ul>
+                  <p v-else>{{ msg.data.deepseek_explanation.risk_warning }}</p>
+                </div>
               </div>
 
               <div class="result-block">
-                <h3>{{ msg.data.gpt.explanation.model_name }}</h3>
-                <p><strong>Suggestion:</strong> {{ msg.data.gpt.explanation.suggestion }}</p>
-                <p><strong>Summary:</strong> {{ msg.data.gpt.explanation.summary }}</p>
+                <h3>{{ msg.data.gpt_explanation.model_name || "GPT" }}</h3>
+                <p><strong>Suggestion:</strong> {{ msg.data.gpt_explanation.suggestion }}</p>
+                <p><strong>Summary:</strong> {{ msg.data.gpt_explanation.summary }}</p>
+
+                <div v-if="msg.data.gpt_explanation.reasoning">
+                  <strong>Reasoning:</strong>
+                  <ul v-if="Array.isArray(msg.data.gpt_explanation.reasoning)">
+                    <li
+                      v-for="item in msg.data.gpt_explanation.reasoning"
+                      :key="item"
+                    >
+                      {{ item }}
+                    </li>
+                  </ul>
+                  <p v-else>{{ msg.data.gpt_explanation.reasoning }}</p>
+                </div>
+
+                <div v-if="msg.data.gpt_explanation.risk_warning">
+                  <strong>Risk Warning:</strong>
+                  <ul v-if="Array.isArray(msg.data.gpt_explanation.risk_warning)">
+                    <li
+                      v-for="item in msg.data.gpt_explanation.risk_warning"
+                      :key="item"
+                    >
+                      {{ item }}
+                    </li>
+                  </ul>
+                  <p v-else>{{ msg.data.gpt_explanation.risk_warning }}</p>
+                </div>
+              </div>
+
+              <div class="result-block comparison-block">
+                <h3>LLM Comparison</h3>
+                <p>
+                  <strong>DeepSeek Suggestion:</strong>
+                  {{ msg.data.deepseek_explanation.suggestion }}
+                </p>
+                <p>
+                  <strong>GPT Suggestion:</strong>
+                  {{ msg.data.gpt_explanation.suggestion }}
+                </p>
+                <p>
+                  Both models explain the same LSTM signal, but they may differ in wording,
+                  detail level, and risk emphasis.
+                </p>
               </div>
             </div>
           </div>
@@ -113,6 +183,7 @@ const sendMessage = async () => {
     }
 
     const data = await response.json();
+    console.log("COMPARE DATA:", data);
 
     messages.value.push({
       role: "assistant",
@@ -127,6 +198,7 @@ const sendMessage = async () => {
     tickerInput.value = "";
   } catch (err) {
     error.value = err.message || "Unknown error occurred.";
+    console.error("COMPARE ERROR:", err);
   } finally {
     loading.value = false;
   }
@@ -236,6 +308,10 @@ const resetChat = () => {
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 14px;
+}
+
+.comparison-block {
+  background: #fff8e6;
 }
 
 .chat-input {

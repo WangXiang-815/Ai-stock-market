@@ -16,7 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 STOCK_NAMES = {
     "AAPL": "Apple Inc.",
     "MSFT": "Microsoft Corporation",
@@ -67,14 +66,15 @@ def explain(ticker: str = Query(..., description="Stock ticker, e.g. NVDA")):
 def compare(ticker: str = Query(..., description="Stock ticker, e.g. NVDA")):
     try:
         signal = predict_stock_signal(ticker.upper())
+
         deepseek_result = explain_signal_with_deepseek(signal)
-        other_result = explain_signal_with_gpt(signal)
+        gpt_result = explain_signal_with_gpt(signal)
 
         return {
             "status": "success",
             "model_signal": signal,
             "deepseek_explanation": deepseek_result,
-            "other_llm_explanation": other_result
+            "gpt_explanation": gpt_result
         }
 
     except Exception as e:
@@ -114,9 +114,6 @@ def price_history(ticker: str = Query(..., description="Stock ticker, e.g. NVDA"
 
 @app.get("/stocks-overview")
 def stocks_overview():
-    """
-    Return dashboard cards for a preset list of stocks.
-    """
     try:
         tickers = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "NVDA"]
         results = []
@@ -137,9 +134,7 @@ def stocks_overview():
 
             signal = predict_stock_signal(ticker)
             probs = signal["probabilities"]
-
             confidence = max(probs.values()) * 100
-
             volume = float(df["Volume"].iloc[-1]) / 1_000_000
 
             results.append({

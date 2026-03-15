@@ -8,7 +8,7 @@ from tensorflow.keras.models import load_model
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_PATH = BASE_DIR / "model" / "lstm_model.keras"
+MODEL_PATH = BASE_DIR / "model" / "lstm_model.h5"
 SCALER_PATH = BASE_DIR / "model" / "scaler.pkl"
 DATA_DIR = BASE_DIR / "data"
 
