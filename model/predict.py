@@ -1,18 +1,21 @@
+from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
 import yfinance as yf
 from tensorflow.keras.models import load_model
 
-# Load trained model and scaler
-model = load_model("model/lstm_model.h5")
-scaler = joblib.load("model/scaler.pkl")
 
-label_map = {
-    0: "SELL",
-    1: "HOLD",
-    2: "BUY"
-}
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_PATH = BASE_DIR / "model" / "lstm_model.keras"
+SCALER_PATH = BASE_DIR / "model" / "scaler.pkl"
+DATA_DIR = BASE_DIR / "data"
+
+DATA_DIR.mkdir(exist_ok=True)
+
+model = load_model(MODEL_PATH)
+scaler = joblib.load(SCALER_PATH)
 
 WINDOW = 60
 HORIZON_DAYS = 20
@@ -30,24 +33,37 @@ FEATURE_COLS = [
     "mom10"
 ]
 
+LABEL_MAP = {
+    0: "SELL",
+    1: "HOLD",
+    2: "BUY"
+}
 
-def load_ticker_data(ticker: str, start="2019-01-01", end=None) -> pd.DataFrame:
-    """
-    Download ticker data from Yahoo Finance.
-    """
-    df = yf.download(ticker, start=start, end=end, auto_adjust=False)
+
+def load_ticker_data(ticker: str, period: str = "6mo") -> pd.DataFrame:
+    ticker = ticker.upper()
+    data_path = DATA_DIR / f"{ticker}.csv"
+
+    if data_path.exists():
+        df = pd.read_csv(data_path)
+        if "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"])
+        return df
+
+    df = yf.download(ticker, period=period, auto_adjust=False)
     df = df.reset_index()
 
-    if isinstance(df.columns, pd.MultiIndex):
+    if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
         df.columns = df.columns.get_level_values(0)
 
+    if df.empty:
+        raise ValueError(f"No data found for ticker: {ticker}")
+
+    df.to_csv(data_path, index=False)
     return df
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Build technical features for prediction.
-    """
     df = df.copy()
 
     df["open"] = df["Open"]
@@ -67,34 +83,29 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def prepare_input(df_feat: pd.DataFrame) -> np.ndarray:
-    """
-    Prepare the latest rolling window for LSTM input.
-    """
     if len(df_feat) < WINDOW:
-        raise ValueError(f"Not enough data to build a {WINDOW}-day window.")
+        raise ValueError(f"Not enough data to build a {WINDOW}-day input window.")
 
     latest_features = df_feat[FEATURE_COLS].values[-WINDOW:]
     latest_scaled = scaler.transform(latest_features)
-
     X_input = latest_scaled.reshape(1, WINDOW, len(FEATURE_COLS)).astype(np.float32)
     return X_input
 
 
 def predict_stock_signal(ticker: str) -> dict:
-    """
-    Generate structured JSON signal for one ticker.
-    """
+    ticker = ticker.upper()
+
     df = load_ticker_data(ticker)
     df_feat = build_features(df)
     X_input = prepare_input(df_feat)
 
     probs = model.predict(X_input, verbose=0)[0]
     pred_class = int(np.argmax(probs))
-    action = label_map[pred_class]
+    action = LABEL_MAP[pred_class]
 
     latest_date = str(pd.to_datetime(df_feat["Date"].iloc[-1]).date())
 
-    signal_json = {
+    result = {
         "ticker": ticker,
         "prediction_date": latest_date,
         "horizon_days": HORIZON_DAYS,
@@ -112,4 +123,4 @@ def predict_stock_signal(ticker: str) -> dict:
         ]
     }
 
-    return signal_json
+    return result
