@@ -51,9 +51,9 @@
               </div>
 
               <div class="result-block">
-                <h3>{{ msg.data.other_llm_explanation.model_name }}</h3>
-                <p><strong>Suggestion:</strong> {{ msg.data.other_llm_explanation.suggestion }}</p>
-                <p><strong>Summary:</strong> {{ msg.data.other_llm_explanation.summary }}</p>
+                <h3>{{ msg.data.gpt.explanation.model_name }}</h3>
+                <p><strong>Suggestion:</strong> {{ msg.data.gpt.explanation.suggestion }}</p>
+                <p><strong>Summary:</strong> {{ msg.data.gpt.explanation.summary }}</p>
               </div>
             </div>
           </div>
